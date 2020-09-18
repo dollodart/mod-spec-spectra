@@ -1,0 +1,25 @@
+root directory, /home/david/work/py-proj/spectra/
+data directory, /home/david/work/py-proj/spectra/data/example_data/
+number scans,calculate
+number wavelengths,calculate
+wavelength range (1/cm),calculate
+maximum number of components,10
+number components,calculate
+time per period (s),300
+time per scan (s),5.639
+pin wavelengths,1500 1750 2400 2600 2800 3800
+wavelength bounds (1/cm),1500 3800
+error tolerance,0.01
+resample,True
+resampling refinement,2.0
+smooth spectra,True
+smoothing window,hanning
+smoothing window length,11
+concentration constraints,ConstraintNorm
+spectrum constraints,ConstraintCumsumNonneg
+maximum number of iterations,100
+animate time dependent data,True
+plot SVD error,False
+plot SVD vectors,False
+plot baseline subtracted spectra,False
+plot MCR ALS results,True
