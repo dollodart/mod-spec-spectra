@@ -6,6 +6,7 @@ from funcs import *
 import sys
 import matplotlib.pyplot as plt
 from scipy.signal import resample
+from math import floor
 
 # read user input parameters
 dct = read_parameters()
@@ -18,7 +19,7 @@ pin_wavelengths = np.array([float(x)
 xbounds = dct['wavelength bounds (1/cm)'].split(' ')
 xlb, xub = float(xbounds[0]), float(xbounds[1])
 k_range = range(1, int(dct['maximum number of components']) + 1)
-error_tolerance = float(dct['error tolerance'])
+chemical_rank_tolerance = float(dct['chemical rank tolerance'])
 max_iter = int(dct['maximum number of iterations'])
 
 if number_wavelengths in [
@@ -69,28 +70,26 @@ if dct['resample'] == 'True':
 
 #import sys; sys.exit()
 A = A.transpose()
+print('period averaging')
+B = period_average(A,
+                   time_per_period=time_per_period,
+                   time_per_scan=time_per_scan)
+scans_per_period = floor(time_per_period / time_per_scan)
+n_periods = round(A.shape[1]/scans_per_period)
+print('period-averaged over {} periods'.format(n_periods))
+print('from {0} scans to {1} scans'.format(A.shape[1], scans_per_period))
 
 if dct['animate time dependent data'] == 'True':
-    full_data = A.copy()
-    print('period averaging')
-    A = period_average(A,
-                       time_per_period=time_per_period,
-                       time_per_scan=time_per_scan)
-    from math import floor
-    scans_per_period = floor(time_per_period / time_per_scan)
-    n_periods = round(full_data.shape[1]/scans_per_period)
-    print('period-averaged over {} periods'.format(n_periods))
-    print('from {0} scans to {1} scans'.format(full_data.shape[1], scans_per_period))
 
     import matplotlib
     from matplotlib.animation import FuncAnimation
 
     matplotlib.rcParams['animation.bitrate'] = 2000
     fig, ax = plt.subplots(nrows=1, ncols=1)
-    l1, = ax.plot(x, A[:, 0], label='avg')
-    l2, = ax.plot(x, full_data[:, 0], label='transient')
-    yl = np.min(np.concatenate((np.ravel(full_data), np.ravel(A))))
-    yh = np.max(np.concatenate((np.ravel(full_data), np.ravel(A))))
+    l1, = ax.plot(x, B[:, 0], label='avg')
+    l2, = ax.plot(x, A[:, 0], label='transient')
+    yl = np.min(np.concatenate((np.ravel(A), np.ravel(A))))
+    yh = np.max(np.concatenate((np.ravel(A), np.ravel(A))))
     ax.set_ylim(yl, yh)
     ax.set_ylabel('Spectral Intensity (a.u.)')
     ax.set_xlabel('Wavelength in wavenumbers')
@@ -98,12 +97,12 @@ if dct['animate time dependent data'] == 'True':
 
     def init():
         l1.set_ydata([np.nan] * len(A[0]))
-        l2.set_ydata([np.nan] * len(full_data[0]))
+        l2.set_ydata([np.nan] * len(A[0]))
         return l1, l2
 
     def animate(i):
-        l1.set_ydata(A[:, i % scans_per_period])
-        l2.set_ydata(full_data[:, i])
+        l1.set_ydata(B[:, i % scans_per_period])
+        l2.set_ydata(A[:, i])
         title_str = """{0}/{1} (resampled) period averaged scans
 number periods = {2}
 time per scan = {3:.2f}s""".format(i % scans_per_period
@@ -124,23 +123,18 @@ time per scan = {3:.2f}s""".format(i % scans_per_period
     plt.show()
     #import sys; sys.exit()
 
-else:
-    A = period_average(A,
-                       time_per_period=time_per_period,
-                       time_per_scan=time_per_scan)
-
 # phase sensitive detection transform
 print('calculating time to phase space transform')
-A = psd_transform(A)[..., 0]
+C = psd_transform(B)[..., 0]
 print('calculated from time space scans {} to 360 phase space'.format(scans_per_period)) 
 # baseline subtraction by piecewise linear functions
 pin_indices = [np.argmin(abs(x - pin)) for pin in pin_wavelengths]
 print('baseline subtracting')
-A = baseline_subtract(A, pin_indices=pin_indices)
+D = baseline_subtract(C, pin_indices=pin_indices)
 print('baseline subtracted at pin wavelengths {}'.format(pin_wavelengths))
 if dct['plot baseline subtracted spectra'] == 'True':
     plt.figure()
-    plt.plot(A.transpose())
+    plt.plot(D.transpose())
     plt.show()
 
 # NMF from sklearn
@@ -159,11 +153,13 @@ if dct['plot baseline subtracted spectra'] == 'True':
 
 # singular value decomposition
 print('calculating singular value decomposition')
-svd, l = snglr_vl_dcmpstn(A, k_range=k_range)
+svd, l = snglr_vl_dcmpstn(D, k_range=k_range)
 print('calculated svd to number components {}'.format(int(dct['maximum number of components'])))
 
+l = np.array(l)
+
 if dct['number components'] in ['calculate', '']:
-    ncomponents = np.argmin(np.array(l) > error_tolerance) + 1  
+    ncomponents = np.argmin(l/l.max() > chemical_rank_tolerance) + 1  
     # by default argmin returns the first index of the minimum value when it appears more than once
 else:
     ncomponents = int(dct['number components'])
@@ -220,7 +216,7 @@ mcrar = McrAR(
     c_constraints=[],
     st_constraints=st_constraints)
 print('calculating MCR-ALS')
-mcrar.fit(A, ST=ST_guess, verbose=True)
+mcrar.fit(D, ST=ST_guess, verbose=True)
 
 np.savetxt('out/wavelengths.txt', x)
 np.savetxt('out/C-opt.txt', mcrar.C_opt_)
