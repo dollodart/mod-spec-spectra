@@ -86,8 +86,8 @@ if dct['animate time dependent data'] == 'True':
 
     matplotlib.rcParams['animation.bitrate'] = 2000
     fig, ax = plt.subplots(nrows=1, ncols=1)
-    l1, = ax.plot(x, B[:, 0], label='avg')
-    l2, = ax.plot(x, A[:, 0], label='transient')
+    l1, = ax.plot(x, B[:, 0], label='period avg')
+    l2, = ax.plot(x, A[:, 0], label='raw')
     yl = np.min(np.concatenate((np.ravel(A), np.ravel(A))))
     yh = np.max(np.concatenate((np.ravel(A), np.ravel(A))))
     ax.set_ylim(yl, yh)
@@ -104,9 +104,10 @@ if dct['animate time dependent data'] == 'True':
         l1.set_ydata(B[:, i % scans_per_period])
         l2.set_ydata(A[:, i])
         title_str = """{0}/{1} (resampled) period averaged scans
-number periods = {2}
-time per scan = {3:.2f}s""".format(i % scans_per_period
+{2}/{3} period
+time per scan = {4:.2f}s""".format(i % scans_per_period
         , scans_per_period
+        , i // scans_per_period
         , n_periods 
         , time_per_scan)
         ax.set_title(title_str)
@@ -115,7 +116,7 @@ time per scan = {3:.2f}s""".format(i % scans_per_period
 
     interval = max((round(60*1000/scans_per_period), 50))
     ani = FuncAnimation(fig, animate,
-                        frames=scans_per_period,
+                        frames=n_periods*scans_per_period,
                         init_func=init,
                         interval=interval,
                         blit=False,

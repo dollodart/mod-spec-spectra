@@ -174,18 +174,19 @@ concentrations, the V^T has as column vectors the spectra, and the S
 has as the diagonal entries the weight of that species to the observed
 spectroscopic signal.
 
-4. For each resulting spectrum in the SVD decomposition, make an
-initial guess for the spectrum of each component by peak assignments
-in the literature. This will be greater than the number of guessed
-components in the SVD since the component spectrum can be arbitrarily
-complicated, the only cause of different components being differences in 
-transient response. Then initialize the spectrum matrix transpose by
-stacking the component spectra. The SVD decomposition gives the chemical
-rank by the number of non-zero entries in the diagonal matrix which are
-above the error tolerance. Note S is determined up to a multiplicative
-constant unless U and V^T are normalized which is relevant when imposing
-an error tolerance. In this implementation the SVD decomposition is used
-directly as the initial guess for step 5.
+4. For each resulting spectrum in the SVD decomposition, make an initial
+guess for the spectrum of each component by peak assignments in the
+literature. This will be greater than the number of guessed components
+in the SVD since the component spectrum can be arbitrarily complicated,
+the only cause of different components being differences in transient
+response. Then initialize the spectrum matrix transpose by stacking the
+component spectra. The SVD decomposition gives the chemical rank by the
+number of non-zero entries in the diagonal matrix which are above the
+error tolerance. Note S is determined up to a multiplicative constant
+unless U and V^T are normalized which is relevant when imposing an error
+tolerance. In this implementation the singular values are scaled by the
+maximum singular value and the spectra matrix from SVD decomposition is
+used directly as the initial guess for step 5.
 
 5. Perform a MCR-ALS fit on the convoluted data matrix using the
 component spectrum matrix found in step 4 as an initial guess. This
@@ -207,12 +208,24 @@ of those two matrices making the data matrix.
 The SVD decomposition is used in forming the psuedo inverse to solve
 the general least squares problem. Therefore when the SVD is input to a
 multivariate curve resolution alternating least squares as an initial
-value, I believe the convergence should be immediate since it is already
-a solution to the least squares problem. 
+value, the convergence might be thought to be immediate since it is already
+a solution to the least squares problem.
 
-It remains to be implemented to
-allow the user to specify the pure component spectra based off the SVD
-so that the MCR-ALS gives a different result than the SVD.
+But the distinction needs to be made between error in a matrix
+factorization, defined as e = norm(WH - A) for some appropriate norm,
+and error in a least squres solution when that matrix is the coefficient
+matrix in the system e = norm(Ax - b). while the SVD may be exact for
+all components, it is desired to impose a significance tolerance is imposed to get a
+chemical rank which is less than the number of significant (non-zero
+singular value) components identified by the SVD. The MCR-ALS routine
+then can minimize error in the factorization. However, due to the arbitrary complexity of pure component spectra allowed by SVD, it may be as in the example data set that fewer significant components are identified by SVD than for some
+
+It remains to be implemented to allow the user to specify the pure
+component spectra based off the SVD so that the MCR-ALS gives a
+different result than the SVD in the cases when the number of components
+identified by the SVD is not greater than the number of expected
+components, which due to the arbitrary complexity the SVD spectra can
+have is expected to generally be the case.
 
 The overview talks about principal component analysis, see, e.g., 
 https://stats.stackexchange.com/questions/134282/relationship-between-svd-and-pca-how-to-use-svd-to-perform-pca
@@ -230,11 +243,8 @@ This problem has been solved and there is a python package Nimfa,
 designed for non-negative matrix factorization (NMF) in biological and
 medical science applications, which uses NNDSVD instead of SVD for
 initialization of NMF. NMF with NNDSVD initialization is also available
-in the sklearn package.
-
-The NNDSVD is used as an initialization and this would suggest isn't
-least squares optimal for NMF, though note the NMF routine in sklearn allows for the
-objective minimization on norms other than the Euclidean.
+in the sklearn package. The NMF routine in sklearn allows for the
+objective minimization on norms other than Euclidean.
 
 It remains to be implemented, but would be a trivial call to an
 external routine and a commented block shows how this could be implemented.

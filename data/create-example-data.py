@@ -2,8 +2,9 @@ import numpy as np
 mod_per = 300.
 mod_freq = 1/mod_per
 t = np.arange(0,5*mod_per,1) # time range, scan rate is 1 per second
+ang_mod_freq = mod_freq*2*np.pi
 
-cA = 1 + np.sin(mod_freq*t)
+cA = 1.5 + np.sin(ang_mod_freq*t)
 cAs = cA
 cBs = cAs**2
 cB = cBs
