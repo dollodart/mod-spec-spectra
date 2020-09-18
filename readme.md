@@ -1,8 +1,8 @@
 # Overview
 
-This script calculates principal components from transient spectra taken during modulation excitation spectroscopy experiments. The idea is that different chemical species will have, in addition to different component spectra and concentrations, different transient responses to modulation of reactant concentrations. By transforming to the phase domain and finding the distinct species spectra and concentration by a method such as alternating least squares based off their different transient and therefore phase behavior, insight into the reaction mechanisms can be obtained. An understanding of the relative concentrations and intrinsic spectral intensities of pure component species can assist in the principal component determination.
+This script calculates principal components from transient spectra taken during modulation excitation spectroscopy experiments. The idea is that different chemical species will have, in addition to different component spectra and concentrations, different transient responses to modulation of reactant concentrations. By transforming to the phase domain and finding the distinct species spectra and concentration by a method such as alternating least squares based off their different transient response and therefore phase, insight into the reaction mechanisms can be obtained. 
 
-This program was developed for users not experienced with Python and working in a windows environment and installation and usage instructions reflect that. It produced the same results on sample data provided as their existing programs, but may not be general or suitable for all spectra and in fact fails on sample data by returning negative spectra (see section `Notes on Decomposition Method`). You are free to use and develop this yourself or request development (I may respond to requests from university labs or other non-profit institutions).
+This program was developed for users not experienced with Python and working in a windows environment and installation and usage instructions reflect that. It produced the same results on sample data provided as their existing programs, but may not be general or suitable for all spectra and in fact fails on example data by returning negative spectra (see section `Notes on Decomposition Method`). You are free to use and develop this yourself or request development. I may respond to requests from university labs or other non-profit institutions. A knowledge of the relative concentrations and intrinsic spectral intensities of pure component species is generally needed for the principal component determination and support for imposing this is not implemented.
 
 # Installation
 
@@ -122,11 +122,11 @@ number of singular values which are greater than some cut-off value
 determined by experimental error.
 
 Disambiguiation on spectrum: a spectrum can be one of two things here:
-1. The data in a spectrum collected through a spectrograph , which is a
+1. The data in a spectrum collected through a spectrometer , which is a
 result of the species concentrations, illumination, surface topography,
 and sensor, and their intrinsic spectrum (see below). This is the data
 matrix.  
-2. The intrinsicp spectrum, which is the absorbance spectrum
+2. The intrinsic spectrum, which is the absorbance spectrum
 from a fixed, uniform illumination of broadband IR at a standard
 concentration. This is one of the two matrices resulting from the
 alternating least squares decomposition.
@@ -142,53 +142,51 @@ matrices, to do interpolation to obtain equal values of the tested
 conditions. For the following it is assumed there is no augmented matrix
 and only one data matrix is being used.
 
-1. For the experimental data used, to eliminate noise, several periods
-of data are taken, and the signal at a given time modulo the period is
-averaged to reduce the experimental noise. For example, if the period
-is 2 seconds, and 10 seconds and 5 periods are taken, then the data
-point at 1.3 seconds is averaged with that at 3.3, 5.3, 7.3, and 9.3
-seconds. This averaging requires resampling (effectively interpolation)
-since the data is generally not collected at a frequency which is an
-integer multiple of the modulation frequency.
+1. Average the data over periods to elminate noise. Several periods of
+data should be taken in the experiment, and the signal at a given time
+modulo the period is averaged to reduce the experimental noise. For
+example, if the period is 2 seconds, and 10 seconds and 5 periods are
+taken, then the data point at 1.3 seconds is averaged with that at 3.3,
+5.3, 7.3, and 9.3 seconds. This averaging is improved by upsampling
+(effectively interpolation) since the data is generally not collected at
+a frequency which is an integer multiple of the modulation frequency.
 
-2. Perform a phase-sensitive transform to the phase angle space
-to obtain a matrix with wavelength as rows and mode number as columns,
-intensity as entries.
+2. Calculate a phase-sensitive transform to the phase angle space to
+obtain a matrix with wavelength as rows and mode number as columns,
+intensity as entries. In this implementation only the fundamental mode,
+the frequency of modulation, is used, but it is possible to analyze also
+ for higher modes in a 3-D array.
 
-Because some of the further operations require evaluating first and
-second derivatives, it may be necessary to smooth the data by a method
-such as spline or Whittaker smoothing. 
-
-3. Evaluate the SVD decomposition of the data matrix. If the original
-data matrix has features with different time variations, that will be
-preserved in the transform to the phase angle space, and the SVD will
-give as many distinct components as there are different time varying
-features in the data matrix. Since intermediates and products may not
-oscillate at the modulation frequency used for the reactants, to first
-approximation this is the number of chemical species present. But the
-SVD will give a spectrum for each component of arbitrary complexity
-(number of features), and only discriminates based on time/phase angle
-variation. The SVD decomposition is often written USV^T, and in this
-case the U matrix has as column vectors are the time/phase angle varying
-concentrations, the V^T has as column vectors the spectra, and the S
-has as the diagonal entries the weight of that species to the observed
-spectroscopic signal.
+3. Calculate the SVD decomposition of the data matrix. If the original
+data matrix has features with different time variations, those
+differences will be seen in different phases in the phase angle space,
+and the SVD should give as many components as there are different
+and differently time varying features in the data matrix. Since
+intermediates and products may not oscillate at the modulation frequency
+used for the reactants, to first approximation this is the number of
+chemical species present. But the SVD will give a spectrum for each
+component of arbitrary complexity (number of features), and only
+discriminates based on time/phase angle variation. The SVD decomposition
+is often written USV^T, and in this case the U matrix has as column
+vectors are the time/phase angle varying concentrations, the V^T has as
+column vectors the spectra, and the S has as the diagonal entries the
+weight of that species to the observed spectroscopic signal.
 
 4. For each resulting spectrum in the SVD decomposition, make an initial
 guess for the spectrum of each component by peak assignments in the
 literature. This will be greater than the number of guessed components
 in the SVD since the component spectrum can be arbitrarily complicated,
 the only cause of different components being differences in transient
-response. Then initialize the spectrum matrix transpose by stacking the
-component spectra. The SVD decomposition gives the chemical rank by the
-number of non-zero entries in the diagonal matrix which are above the
-error tolerance. Note S is determined up to a multiplicative constant
+response. The SVD decomposition gives the chemical rank by the number
+of non-zero entries in the diagonal matrix which are above the chemical
+rank tolerance. Note S is determined up to a multiplicative constant
 unless U and V^T are normalized which is relevant when imposing an error
 tolerance. In this implementation the singular values are scaled by the
-maximum singular value and the spectra matrix from SVD decomposition is
-used directly as the initial guess for step 5.
+maximum singular value. In this implementation, the spectra from SVD
+with significant singular values are input directly into step 5 without
+user input.
 
-5. Perform a MCR-ALS fit on the convoluted data matrix using the
+5. Calculate a decomposition of the data matrix by MCR-ALS using the
 component spectrum matrix found in step 4 as an initial guess. This
 gives a regressed concentration matrix in addition to the spectrum
 matrix. The concentration matrix has modes as rows and wavelengths
@@ -198,6 +196,10 @@ implementation only the fundamental mode is used, and so this is a
 vector of concentrations at the fundamental mode (the modulation
 frequency).
 
+6. Smooth the output data for spectra and concentrations of pure
+components. Since the input data was resampled this is unlikely to be
+necessary but is in any case only aesthetic in significant effect.
+
 # Notes on Decomposition Method 
 
 What is called decomposition is also called factorization. The
@@ -206,7 +208,7 @@ concentrations of some number of species and their spectras, the product
 of those two matrices making the data matrix.
 
 The SVD decomposition is used in forming the psuedo inverse to solve
-the general least squares problem. Therefore when the SVD is input to a
+the general least squares problem. Since the SVD output is input to a
 multivariate curve resolution alternating least squares as an initial
 value, the convergence might be thought to be immediate since it is already
 a solution to the least squares problem.
@@ -214,20 +216,23 @@ a solution to the least squares problem.
 But the distinction needs to be made between error in a matrix
 factorization, defined as e = norm(WH - A) for some appropriate norm,
 and error in a least squres solution when that matrix is the coefficient
-matrix in the system e = norm(Ax - b). while the SVD may be exact for
-all components, it is desired to impose a significance tolerance is imposed to get a
-chemical rank which is less than the number of significant (non-zero
-singular value) components identified by the SVD. The MCR-ALS routine
-then can minimize error in the factorization. However, due to the arbitrary complexity of pure component spectra allowed by SVD, it may be as in the example data set that fewer significant components are identified by SVD than for some
+matrix in the system e = norm(Ax - b), for which the error is in the
+solution of x. While the SVD may be exact for all components, it is
+desired to impose a significance tolerance to get a chemical rank
+which is less than the number of significant (non-zero singular value)
+components identified by the SVD. The MCR-ALS routine then can minimize
+error in the factorization. However, due to the arbitrary complexity of
+pure component spectra allowed by SVD, it may be as in the example data
+set that fewer significant components are identified by SVD than are
+known to exist.
 
 It remains to be implemented to allow the user to specify the pure
 component spectra based off the SVD so that the MCR-ALS gives a
-different result than the SVD in the cases when the number of components
-identified by the SVD is not greater than the number of expected
-components, which due to the arbitrary complexity the SVD spectra can
-have is expected to generally be the case.
+different result than the SVD even in the cases when the number of
+components identified by the SVD is not greater than the number of
+expected components.
 
-The overview talks about principal component analysis, see, e.g., 
+The overview uses the term principal component, for relation to SVD see, e.g., 
 https://stats.stackexchange.com/questions/134282/relationship-between-svd-and-pca-how-to-use-svd-to-perform-pca
 The SVD contains the same and more information than PCA.
 
@@ -239,12 +244,25 @@ will return non-physical negative valued spectra. So the
 question is, if the user does not supply component spectra guesses, how
 can the initial guess be made?
 
-This problem has been solved and there is a python package Nimfa,
-designed for non-negative matrix factorization (NMF) in biological and
-medical science applications, which uses NNDSVD instead of SVD for
-initialization of NMF. NMF with NNDSVD initialization is also available
-in the sklearn package. The NMF routine in sklearn allows for the
-objective minimization on norms other than Euclidean.
+This problem has been solved and there is a python package Nimfa for
+non-negative matrix factorization (NMF) in bioinformatics, which uses
+NNDSVD instead of SVD for initialization of NMF. NMF with NNDSVD
+initialization is also available in the sklearn package. The NMF routine
+in sklearn allows for the objective minimization on norms other than
+Euclidean.
+
+From Nimfa docs:
+
+```
+import numpy as np
+
+import nimfa
+
+V = np.random.rand(40, 100)
+nmf = nimfa.Nmf(V, seed="nndsvd", rank=10, max_iter=12, update='euclidean',
+                objective='fro')
+nmf_fit = nmf()
+```
 
 It remains to be implemented, but would be a trivial call to an
-external routine and a commented block shows how this could be implemented.
+external routine and a commented block shows how this could be implemented with sklearn.
