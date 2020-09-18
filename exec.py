@@ -141,11 +141,11 @@ if dct['plot baseline subtracted spectra'] == 'True':
 # NMF from sklearn
 #from sklearn.decomposition import non_negative_factorization
 #if dct['number components'] in ['calculate', '']:
-#    n_components = min(A.shape)
+#    n_components = int(dct['maximum number of components'])
 #else:
 #    n_components = int(dct['number components'])
 #
-#C,ST,niter = non_negative_factorization(A,
+#C,ST,niter = non_negative_factorization(abs(D), #resample may introduce neg 
 #        n_components=n_components,
 #        init='nndsvda',
 #        solver='cd')
