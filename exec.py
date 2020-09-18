@@ -62,21 +62,28 @@ if dct['resample'] == 'True':
     # this efficiency improvement is so pronounced that increasing the number
     # of data points to the next power of 2 from a desired number is always
     # (in practice) more efficient
+    print('resampling')
     A = resample(A, num, axis=0)
     time_per_scan /= num / num0
+    print('upsampled from {0} to {1} scans'.format(number_scans, A.shape[0]))
 
+#import sys; sys.exit()
 A = A.transpose()
 
 if dct['animate time dependent data'] == 'True':
     full_data = A.copy()
+    print('period averaging')
     A = period_average(A,
                        time_per_period=time_per_period,
                        time_per_scan=time_per_scan)
-    import matplotlib
-    from matplotlib.animation import FuncAnimation
-
     from math import floor
     scans_per_period = floor(time_per_period / time_per_scan)
+    n_periods = round(full_data.shape[1]/scans_per_period)
+    print('period-averaged over {} periods'.format(n_periods))
+    print('from {0} scans to {1} scans'.format(full_data.shape[1], scans_per_period))
+
+    import matplotlib
+    from matplotlib.animation import FuncAnimation
 
     matplotlib.rcParams['animation.bitrate'] = 2000
     fig, ax = plt.subplots(nrows=1, ncols=1)
@@ -85,6 +92,8 @@ if dct['animate time dependent data'] == 'True':
     yl = np.min(np.concatenate((np.ravel(full_data), np.ravel(A))))
     yh = np.max(np.concatenate((np.ravel(full_data), np.ravel(A))))
     ax.set_ylim(yl, yh)
+    ax.set_ylabel('Spectral Intensity (a.u.)')
+    ax.set_xlabel('Wavelength in wavenumbers')
     ax.legend(loc='upper center')
 
     def init():
@@ -95,17 +104,25 @@ if dct['animate time dependent data'] == 'True':
     def animate(i):
         l1.set_ydata(A[:, i % scans_per_period])
         l2.set_ydata(full_data[:, i])
-        ax.set_title("{0}/{1} and {2}/{3}".format(i %
-                                                  scans_per_period, scans_per_period, i, number_scans))
+        title_str = """{0}/{1} (resampled) period averaged scans
+number periods = {2}
+time per scan = {3:.2f}s""".format(i % scans_per_period
+        , scans_per_period
+        , n_periods 
+        , time_per_scan)
+        ax.set_title(title_str)
+
         return l1, l2
 
+    interval = max((round(60*1000/scans_per_period), 50))
     ani = FuncAnimation(fig, animate,
-                        frames=number_scans,
+                        frames=scans_per_period,
                         init_func=init,
-                        interval=200,
+                        interval=interval,
                         blit=False,
                         save_count=50)
     plt.show()
+    #import sys; sys.exit()
 
 else:
     A = period_average(A,
@@ -113,10 +130,14 @@ else:
                        time_per_scan=time_per_scan)
 
 # phase sensitive detection transform
+print('calculating time to phase space transform')
 A = psd_transform(A)[..., 0]
+print('calculated from time space scans {} to 360 phase space'.format(scans_per_period)) 
 # baseline subtraction by piecewise linear functions
 pin_indices = [np.argmin(abs(x - pin)) for pin in pin_wavelengths]
+print('baseline subtracting')
 A = baseline_subtract(A, pin_indices=pin_indices)
+print('baseline subtracted at pin wavelengths {}'.format(pin_wavelengths))
 if dct['plot baseline subtracted spectra'] == 'True':
     plt.figure()
     plt.plot(A.transpose())
@@ -137,7 +158,9 @@ if dct['plot baseline subtracted spectra'] == 'True':
 #import sys; sys.exit()
 
 # singular value decomposition
+print('calculating singular value decomposition')
 svd, l = snglr_vl_dcmpstn(A, k_range=k_range)
+print('calculated svd to number components {}'.format(int(dct['maximum number of components'])))
 
 if dct['number components'] in ['calculate', '']:
     ncomponents = np.argmin(np.array(l) > error_tolerance) + 1  
@@ -196,6 +219,7 @@ mcrar = McrAR(
     c_regr=OLS(),
     c_constraints=[],
     st_constraints=st_constraints)
+print('calculating MCR-ALS')
 mcrar.fit(A, ST=ST_guess, verbose=True)
 
 np.savetxt('out/wavelengths.txt', x)
