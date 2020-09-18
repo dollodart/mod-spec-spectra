@@ -121,8 +121,30 @@ if dct['plot baseline subtracted spectra'] == 'True':
     plt.figure()
     plt.plot(A.transpose())
     plt.show()
+
+# NMF from sklearn
+#from sklearn.decomposition import non_negative_factorization
+#if dct['number components'] in ['calculate', '']:
+#    n_components = min(A.shape)
+#else:
+#    n_components = int(dct['number components'])
+#
+#C,ST,niter = non_negative_factorization(A,
+#        n_components=n_components,
+#        init='nndsvda',
+#        solver='cd')
+#
+#import sys; sys.exit()
+
 # singular value decomposition
 svd, l = snglr_vl_dcmpstn(A, k_range=k_range)
+
+if dct['number components'] in ['calculate', '']:
+    ncomponents = np.argmin(np.array(l) > error_tolerance) + 1  
+    # by default argmin returns the first index of the minimum value when it appears more than once
+else:
+    ncomponents = int(dct['number components'])
+
 if dct['plot SVD vectors'] == 'True':
     fig, axs = plt.subplots(nrows=1, ncols=3)
     axs[0].plot(svd[0])
@@ -136,16 +158,10 @@ if dct['plot SVD error'] == 'True':
     plt.semilogy(k_range, l)
     plt.show()
 
-if dct['number components'] in ['calculate', '']:
-    i = np.argmin(np.array(l) > error_tolerance) + 1  
-    # by default argmin returns the first index of the minimum value when it appears more than once
-else:
-    i = int(dct['number components'])
-
 #print("Approximating by {0} components".format(i))
 
 u, s, vt = svd
-ST_guess = vt[:i]
+ST_guess = vt[:ncomponents]
 
 # multivariate curve resolution
 c_constraints = []

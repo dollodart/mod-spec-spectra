@@ -2,7 +2,7 @@
 
 This script calculates principal components from transient spectra taken during modulation excitation spectroscopy experiments. The idea is that different chemical species will have, in addition to different component spectra and concentrations, different transient responses to modulation of reactant concentrations. By transforming to the phase domain and finding the distinct species spectra and concentration by a method such as alternating least squares based off their different transient and therefore phase behavior, insight into the reaction mechanisms can be obtained. An understanding of the relative concentrations and intrinsic spectral intensities of pure component species can assist in the principal component determination.
 
-This program was developed for users not experienced with Python and working in a windows environment and installation and usage instructions reflect that.
+This program was developed for users not experienced with Python and working in a windows environment and installation and usage instructions reflect that. It produced the same results on sample data provided as their existing programs, but may not be general or suitable for all spectra and in fact fails on sample data by returning negative spectra (see section `Notes on Decomposition Method`). You are free to use and develop this yourself or request development (I may respond to requests from university labs or other non-profit institutions).
 
 # Installation
 
@@ -112,12 +112,26 @@ plot MCR ALS results,True
 - lof=local outlier factor
 - svd=singular value decomposition
 - pca=principal components analysis
+- nmf=non-negative matrix factorization
+- nndsvd=non-negative double singular value decomposition
 
 ## Definitions 
 
 Chemical Rank: The rank of a data matrix found by the
 number of singular values which are greater than some cut-off value
 determined by experimental error.
+
+Disambiguiation on spectrum: a spectrum can be one of two things here:
+1. The data in a spectrum collected through a spectrograph , which is a
+result of the species concentrations, illumination, surface topography,
+and sensor, and their intrinsic spectrum (see below). This is the data
+matrix.  
+2. The intrinsicp spectrum, which is the absorbance spectrum
+from a fixed, uniform illumination of broadband IR at a standard
+concentration. This is one of the two matrices resulting from the
+alternating least squares decomposition.
+
+Factorization and decomposition, in this context, are equivalent.
 
 ## Data Transformation
 
@@ -183,12 +197,44 @@ implementation only the fundamental mode is used, and so this is a
 vector of concentrations at the fundamental mode (the modulation
 frequency).
 
-Note the SVD decomposition is used in forming the psuedo inverse to
-solve the general least squares problem. Therefore when the SVD is input
-to a multivariate curve resolution alternating least squares as an
-initial value, the convergence should be immediate since it is already a
-solution to the least squares problem. It remains to be implemented to
+# Notes on Decomposition Method 
+
+What is called decomposition is also called factorization. The
+problem is to find from the spectroscopic data matrix the relative
+concentrations of some number of species and their spectras, the product
+of those two matrices making the data matrix.
+
+The SVD decomposition is used in forming the psuedo inverse to solve
+the general least squares problem. Therefore when the SVD is input to a
+multivariate curve resolution alternating least squares as an initial
+value, I believe the convergence should be immediate since it is already
+a solution to the least squares problem. 
+
+It remains to be implemented to
 allow the user to specify the pure component spectra based off the SVD
 so that the MCR-ALS gives a different result than the SVD.
 
-The overview talks about principal component analysis, see, e.g., https://stats.stackexchange.com/questions/134282/relationship-between-svd-and-pca-how-to-use-svd-to-perform-pca. The SVD contains the same and more information than PCA.
+The overview talks about principal component analysis, see, e.g., 
+https://stats.stackexchange.com/questions/134282/relationship-between-svd-and-pca-how-to-use-svd-to-perform-pca
+The SVD contains the same and more information than PCA.
+
+## Imposing contraints on the SVD: non-negative double singular value decomposiion (NNDSVD)
+
+While the alternating least squares decomposition in pyMCR supports
+constraints the SVD function in scipy does not and generally the SVD
+will return non-physical negative valued spectra. So the
+question is, if the user does not supply component spectra guesses, how
+can the initial guess be made?
+
+This problem has been solved and there is a python package Nimfa,
+designed for non-negative matrix factorization (NMF) in biological and
+medical science applications, which uses NNDSVD instead of SVD for
+initialization of NMF. NMF with NNDSVD initialization is also available
+in the sklearn package.
+
+The NNDSVD is used as an initialization and this would suggest isn't
+least squares optimal for NMF, though note the NMF routine in sklearn allows for the
+objective minimization on norms other than the Euclidean.
+
+It remains to be implemented, but would be a trivial call to an
+external routine and a commented block shows how this could be implemented.

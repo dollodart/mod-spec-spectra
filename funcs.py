@@ -238,7 +238,8 @@ def smooth(x, window_len=11, window='hanning'):
         'hamming': np.hamming,
         'bartlett': np.bartlett,
         'blackman': np.blackman}
-    # s=np.r_[x[window_len-1:0:-1],x,x[-2:-window_len-1:-1]] #this concatenates x with its first window length of points (reversed) and second window length of points (in original order)
+    # s = np.r_[x[window_len-1:0:-1],x,x[-2:-window_len-1:-1]] 
+    # this concatenates x with its first window length of points (reversed) and second window length of points (in original order)
     # this is bigger than the window length, and hence in the convolution
     # there is a "traveling window" around each position
     s = x
